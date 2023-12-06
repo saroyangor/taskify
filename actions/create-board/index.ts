@@ -2,9 +2,16 @@
 
 import { auth } from "@clerk/nextjs";
 import { revalidatePath } from "next/cache";
+import { ACTION, ENTITY_TYPE } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { createSafeAction } from "@/lib/create-safe-action";
+import { createAuditLog } from "@/lib/create-audit-log";
+import {
+  incrementAvailableCount,
+  hasAvailableCount
+} from "@/lib/org-limit";
+import { checkSubscription } from "@/lib/subscription";
 
 import { InputType, ReturnType } from "./types";
 import { CreateBoard } from "./schema";
@@ -16,6 +23,15 @@ const handler = async (data: InputType): Promise<ReturnType> => {
     return {
       error: "Unauthorized",
     };
+  }
+
+  const canCreate = await hasAvailableCount();
+  const isPro = await checkSubscription();
+
+  if (!canCreate && !isPro) {
+    return {
+      error: "You have reached your limit of free boards. Please upgrade to create more."
+    }
   }
 
   const { title, image } = data;
@@ -48,16 +64,25 @@ const handler = async (data: InputType): Promise<ReturnType> => {
         imageLinkHTML,
       }
     });
+
+    if (!isPro) {
+      await incrementAvailableCount();
+    }
+
+    await createAuditLog({
+      entityTitle: board.title,
+      entityId: board.id,
+      entityType: ENTITY_TYPE.BOARD,
+      action: ACTION.CREATE,
+    })
   } catch (error) {
     return {
-      error: "Failed to create.",
-    };
+      error: "Failed to create."
+    }
   }
 
-  revalidatePath(`/board/${board.id}`)
-  return {
-    data: board,
-  };
-}
+  revalidatePath(`/board/${board.id}`);
+  return { data: board };
+};
 
-export const createBoard = createSafeAction(CreateBoard, handler)
+export const createBoard = createSafeAction(CreateBoard, handler);

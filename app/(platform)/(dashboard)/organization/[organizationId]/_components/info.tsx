@@ -26,18 +26,18 @@ export const Info = ({
       <div className="w-[60px] h-[60px] relative">
         <Image
           fill
-          src={ organization?.imageUrl! }
+          src={organization?.imageUrl!}
           alt="Organization"
           className="rounded-md object-cover"
         />
       </div>
       <div className="space-y-1">
         <p className="font-semibold text-xl">
-          { organization?.name }
+          {organization?.name}
         </p>
         <div className="flex items-center text-xs text-muted-foreground">
           <CreditCard className="h-3 w-3 mr-1" />
-          { isPro ? "Pro" : "Free" }
+          {isPro ? "Pro" : "Free"}
         </div>
       </div>
     </div>
